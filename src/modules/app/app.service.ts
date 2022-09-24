@@ -9,6 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Advocate, AdvocateDocument } from '@schemas/advocate.schema';
 import axios from 'axios';
+import { decode } from 'html-entities';
 
 @Injectable()
 export class AppService {
@@ -66,7 +67,9 @@ export class AppService {
       if (match === null) throw new NotFoundException();
       const [name] = match;
       if (name === undefined) throw new NotFoundException();
-      return name;
+      const decodedName = decode(name);
+      Logger.log(`Found App with name: ${decodedName}`);
+      return decode(decodedName);
     } catch (exception) {
       Logger.error(`Provided url ${url} was invalid`);
       throw exception;

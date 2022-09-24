@@ -6,18 +6,18 @@ import { AppService } from './app.service';
 import { GetAppResponse } from './responses/get-apps.response';
 import { GetReferralResponse } from './responses/get-referral.response';
 
-@Controller('app')
+@Controller()
 @ApiTags('app')
 export class AppController {
   constructor(private appService: AppService) {}
 
-  @Get()
+  @Get('apps')
   @ApiOkResponse({ type: GetAppResponse })
   async getAllApps(): Promise<App[]> {
     return await this.appService.findAll();
   }
 
-  @Get(':app_id/referral')
+  @Get('app/:app_id/referral')
   @ApiParam({ name: 'app_id', example: '2376737905701576' })
   @ApiOkResponse({ type: GetReferralResponse })
   async index(@Param('app_id') app_id: string): Promise<ReferralInterface> {
@@ -27,7 +27,7 @@ export class AppController {
     return { advocate_id };
   }
 
-  @Post(':app_id/referral/:advocate_id')
+  @Post('app/:app_id/referral/:advocate_id')
   @ApiParam({ name: 'app_id', example: '2376737905701576' })
   @ApiParam({ name: 'advocate_id', example: '124125' })
   async create(

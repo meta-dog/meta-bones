@@ -1,7 +1,13 @@
 import { Controller, Get, Param, Post } from '@nestjs/common';
-import { ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiFoundResponse,
+  ApiOkResponse,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { App } from '@schemas/app.schema';
-import { ReferralInterface } from './app.types';
+import { AppInterface, ReferralInterface } from './app.types';
 import { AppService } from './app.service';
 import { GetAppResponse } from './responses/get-apps.response';
 import { GetReferralResponse } from './responses/get-referral.response';
@@ -12,9 +18,10 @@ export class AppController {
   constructor(private appService: AppService) {}
 
   @Get('apps')
-  @ApiOkResponse({ type: GetAppResponse })
-  async getAllApps(): Promise<App[]> {
-    return await this.appService.findAll();
+  @ApiOkResponse({ type: GetAppResponse, isArray: true })
+  async getAllApps(): Promise<AppInterface[]> {
+    const results = await this.appService.findAll();
+    return results.map(({ app_id, name }) => ({ app_id, name }));
   }
 
   @Get('app/:app_id/referral')

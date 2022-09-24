@@ -6,9 +6,12 @@ import { BaseAppModule } from './baseapp.module';
 
 declare const module: any;
 
+const BASE_PATH = 'api';
+
 async function bootstrap() {
   const app = await NestFactory.create(BaseAppModule);
   app.enableCors();
+  app.setGlobalPrefix(BASE_PATH);
 
   const config = new DocumentBuilder()
     .setTitle('Meta-Dog (actually a 😾)')
@@ -18,7 +21,7 @@ async function bootstrap() {
     .setVersion('1.0')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api/', app, document);
 
   const configService: ConfigService = app.get(ConfigService);
   const appPort = configService.get('app.port') || 3500;

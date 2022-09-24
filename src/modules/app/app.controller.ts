@@ -1,12 +1,5 @@
 import { Controller, Get, Param, Post } from '@nestjs/common';
-import {
-  ApiFoundResponse,
-  ApiOkResponse,
-  ApiParam,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { App } from '@schemas/app.schema';
+import { ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
 import { AppInterface, ReferralInterface } from './app.types';
 import { AppService } from './app.service';
 import { GetAppResponse } from './responses/get-apps.response';

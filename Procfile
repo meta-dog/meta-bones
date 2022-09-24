@@ -1,0 +1,1 @@
+web: cd meta-bones && npm run start:prod

@@ -39,7 +39,7 @@ export class AppController {
     return { advocate_id };
   }
 
-  @Post('app/:app_id/queue/:advocate_id')
+  @Post('app/:app_id/referral/:advocate_id')
   @ApiParam({ name: 'app_id', example: '2376737905701576' })
   @ApiParam({ name: 'advocate_id', example: 'example.user' })
   async addReferralToQueue(

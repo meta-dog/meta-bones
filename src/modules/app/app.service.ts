@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { App, AppDocument } from '@schemas/app.schema';
 import { InjectModel } from '@nestjs/mongoose';
@@ -10,6 +11,12 @@ import { Model } from 'mongoose';
 import { Advocate, AdvocateDocument } from '@schemas/advocate.schema';
 import axios from 'axios';
 import { decode } from 'html-entities';
+import {
+  BlacklistItem,
+  BlacklistItemDocument,
+} from '@schemas/blacklistitem.schema';
+import { PendingItem, PendingItemDocument } from '@schemas/pendingitem.schema';
+import { MAX_PENDING_ATTEMPTS } from './app.const';
 
 @Injectable()
 export class AppService {
@@ -17,6 +24,10 @@ export class AppService {
     @InjectModel(Advocate.name)
     private advocateModel: Model<AdvocateDocument>,
     @InjectModel(App.name) private appModel: Model<AppDocument>,
+    @InjectModel(BlacklistItem.name)
+    private blacklistItemModel: Model<BlacklistItemDocument>,
+    @InjectModel(PendingItem.name)
+    private pendingItemModel: Model<PendingItemDocument>,
   ) {}
   async findAll(): Promise<App[]> {
     return await this.appModel.find().exec();
@@ -38,8 +49,12 @@ export class AppService {
     return advocate;
   }
 
-  private async getNameFromUrl(url: string) {
+  private async getNameFrom(advocate_id: string, app_id: string) {
+    const url = `/${advocate_id}/${app_id}`;
     Logger.log(`Fetching url ${url}`);
+    const blacklistItem = new BlacklistItem();
+    blacklistItem.advocate_id = advocate_id;
+    blacklistItem.app_id = app_id;
     const request = await axios.get(url, {
       baseURL: 'https://www.oculus.com/appreferrals',
       headers: {
@@ -64,14 +79,63 @@ export class AppService {
       const { data } = request;
       const regex = /(?<=Get\ 25%\ off\ )(.*?)(?= \| Meta Quest)/g;
       const match = (data as string).match(regex);
-      if (match === null) throw new NotFoundException();
+      if (match === null || match.length === 0) {
+        const isInvalidLink = (data as string).includes(
+          'error_type=invalid_link',
+        );
+        if (isInvalidLink) {
+          Logger.error(
+            `Did not find a match within url ${url}. Adding ${app_id}/${advocate_id} to blacklist due to invalid link`,
+          );
+          this.blacklistItemModel.create(blacklistItem);
+        } else {
+          const pendingItem = await this.pendingItemModel.findOne({
+            app_id,
+            advocate_id,
+          });
+          if (
+            pendingItem !== null &&
+            pendingItem.attempts < MAX_PENDING_ATTEMPTS
+          ) {
+            Logger.error(
+              `Did not find a match within url ${url} for unknown reasons. Increasing ${app_id}/${advocate_id} attempts`,
+            );
+            await this.pendingItemModel.updateOne(
+              { app_id, advocate_id },
+              { $inc: { attempts: 1 } },
+            );
+          } else {
+            Logger.error(
+              `Did not find a match within url ${url} for unknown reasons.Adding ${app_id}/${advocate_id} to blacklist due to too many attempts`,
+            );
+            this.blacklistItemModel.create(blacklistItem);
+          }
+        }
+        throw new NotFoundException();
+      }
       const [name] = match;
-      if (name === undefined) throw new NotFoundException();
       const decodedName = decode(name);
       Logger.log(`Found App with name: ${decodedName}`);
       return decode(decodedName);
     } catch (exception) {
-      Logger.error(`Provided url ${url} was invalid`);
+      const pendingItem = await this.pendingItemModel.findOne({
+        app_id,
+        advocate_id,
+      });
+      if (pendingItem !== null && pendingItem.attempts < MAX_PENDING_ATTEMPTS) {
+        Logger.warn(
+          `Exception ${exception} accesing url ${url}. Increasing ${app_id}/${advocate_id} pending item attemps`,
+        );
+        this.pendingItemModel.updateOne(
+          { app_id, advocate_id },
+          { $inc: { attempts: 1 } },
+        );
+      } else {
+        Logger.error(
+          `Exception ${exception} accesing url ${url}. Adding ${app_id}/${advocate_id} to blacklist as it has exceeded the max: ${MAX_PENDING_ATTEMPTS}`,
+        );
+        this.blacklistItemModel.create(blacklistItem);
+      }
       throw exception;
     }
   }
@@ -81,10 +145,9 @@ export class AppService {
     app_id: App['app_id'],
   ) {
     const app = await this.appModel.findOne({ app_id: app_id });
+    Logger.log(`Searching name for App ${app_id} to ensure referral validity`);
+    const name = await this.getNameFrom(advocate_id, app_id);
     if (app !== null) return app;
-    Logger.log(`Creating App with id ${app_id} as it was not found`);
-    const url = `/${advocate_id}/${app_id}`;
-    const name = await this.getNameFromUrl(url);
     const newApp = new App();
     newApp.app_id = app_id;
     newApp.name = name;
@@ -92,40 +155,117 @@ export class AppService {
     return await this.appModel.create(newApp);
   }
 
-  async createReferral(
+  private async createReferralOrBlacklist(
     advocate_id: Advocate['advocate_id'],
     app_id: App['app_id'],
   ): Promise<void> {
-    const app = await this.getAppId(advocate_id, app_id);
-    const advocate = await this.advocateModel
-      .findOne({ advocate_id: advocate_id })
-      .populate('apps');
-    if (advocate === null) {
-      const newAdvocate = new Advocate();
-      newAdvocate.advocate_id = advocate_id;
-      newAdvocate.apps = [app._id];
-      Logger.log(`Creating Advocate ${advocate_id} as it was not found`);
-      const createdAdvocate = await this.advocateModel.create(newAdvocate);
+    try {
+      const app = await this.getAppId(advocate_id, app_id);
+      const advocate = await this.advocateModel
+        .findOne({ advocate_id: advocate_id })
+        .populate('apps');
+      if (advocate === null) {
+        const newAdvocate = new Advocate();
+        newAdvocate.advocate_id = advocate_id;
+        newAdvocate.apps = [app._id];
+        Logger.log(`Creating Advocate ${advocate_id} as it was not found`);
+        const createdAdvocate = await this.advocateModel.create(newAdvocate);
+        await this.appModel.updateMany(
+          { _id: app._id },
+          { $addToSet: { advocates: createdAdvocate._id } },
+        );
+        return;
+      }
+      const anyAdvocate = await this.appModel.find({
+        $and: [{ _id: app._id }, { advocates: advocate._id }],
+      });
+      if (anyAdvocate.length > 0) {
+        Logger.error(`Attempted dupe referral for ${advocate_id}:${app_id}`);
+        throw new ConflictException();
+      }
+      await this.advocateModel.updateMany(
+        { _id: advocate._id },
+        { $addToSet: { apps: app._id } },
+      );
       await this.appModel.updateMany(
         { _id: app._id },
-        { $addToSet: { advocates: createdAdvocate._id } },
+        { $addToSet: { advocates: advocate._id } },
       );
-      return;
+      Logger.log(`Successfully added ${app_id}/${advocate_id}`);
+    } catch (reason) {
+      return Promise.reject(reason);
     }
-    const anyAdvocate = await this.appModel.find({
-      $and: [{ _id: app._id }, { advocates: advocate._id }],
+  }
+
+  async moveQueue() {
+    const pendingItems = await this.pendingItemModel.find();
+    const numPendingItems = pendingItems.length;
+
+    Logger.log(`Starting the queue movement, pending: ${numPendingItems}`);
+    let index = 0;
+    while (index < numPendingItems) {
+      const nextWaitMs = 300 * (1 + Math.random());
+      try {
+        const currentItem = pendingItems[index];
+        await this.createReferralOrBlacklist(
+          currentItem.advocate_id,
+          currentItem.app_id,
+        );
+        Logger.log(`Waiting for next: ${index + 1}/${numPendingItems}`);
+        setTimeout(() => {
+          index += 1;
+        }, nextWaitMs);
+      } catch (exception) {
+        Logger.error(
+          `Addition failed; waiting for next: ${index + 1}/${numPendingItems}`,
+        );
+        setTimeout(() => {
+          index += 1;
+        }, nextWaitMs);
+      }
+    }
+  }
+
+  async addReferralToQueue(
+    advocate_id: Advocate['advocate_id'],
+    app_id: App['app_id'],
+  ): Promise<void> {
+    const blacklistItem = await this.blacklistItemModel.findOne({
+      app_id,
+      advocate_id,
     });
-    if (anyAdvocate.length > 0) {
-      Logger.error(`Attempted dupe referral for ${advocate_id}:${app_id}`);
+    if (blacklistItem !== null) {
+      Logger.warn(
+        `Discarding new pending item ${app_id}/${advocate_id} due to being in the blacklist`,
+      );
+      throw new UnprocessableEntityException();
+    }
+    const pendingItem = await this.pendingItemModel.findOne({
+      app_id,
+      advocate_id,
+    });
+    if (pendingItem !== null) {
+      Logger.warn(
+        `Discarding new pending item ${app_id}/${advocate_id} due to being in the queue`,
+      );
       throw new ConflictException();
     }
-    await this.advocateModel.updateMany(
-      { _id: advocate._id },
-      { $addToSet: { apps: app._id } },
-    );
-    await this.appModel.updateMany(
-      { _id: app._id },
-      { $addToSet: { advocates: advocate._id } },
-    );
+    const advocateAppLink = await this.appModel
+      .findOne({ app_id })
+      .populate('advocates');
+    if (
+      advocateAppLink !== null &&
+      advocateAppLink.advocates.some((adv) => adv.advocate_id === advocate_id)
+    ) {
+      Logger.warn(
+        `Discarding new pending item ${app_id}/${advocate_id} due to already existing`,
+      );
+      throw new ConflictException();
+    }
+    const newPendingItem = new PendingItem();
+    newPendingItem.advocate_id = advocate_id;
+    newPendingItem.app_id = app_id;
+    Logger.log(`Adding new pending item ${app_id}/${advocate_id}`);
+    await this.pendingItemModel.create(newPendingItem);
   }
 }

@@ -1,5 +1,17 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
-import { ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Logger,
+  NotFoundException,
+  Param,
+  Post,
+} from '@nestjs/common';
+import {
+  ApiExcludeEndpoint,
+  ApiOkResponse,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AppInterface, ReferralInterface } from './app.types';
 import { AppService } from './app.service';
 import { GetAppResponse } from './responses/get-apps.response';
@@ -27,13 +39,23 @@ export class AppController {
     return { advocate_id };
   }
 
-  @Post('app/:app_id/referral/:advocate_id')
+  @Post('app/:app_id/queue/:advocate_id')
   @ApiParam({ name: 'app_id', example: '2376737905701576' })
-  @ApiParam({ name: 'advocate_id', example: '124125' })
-  async create(
+  @ApiParam({ name: 'advocate_id', example: 'example.user' })
+  async addReferralToQueue(
     @Param('app_id') app_id: string,
     @Param('advocate_id') advocate_id: string,
   ): Promise<void> {
-    await this.appService.createReferral(advocate_id, app_id);
+    await this.appService.addReferralToQueue(advocate_id, app_id);
+  }
+
+  @Get('app/queue/move')
+  @ApiExcludeEndpoint(process?.env?.LOCAL !== 'true')
+  async moveQueue(): Promise<void> {
+    if (process?.env?.LOCAL !== 'true') {
+      Logger.error('Attempt to use local endpoint moveQueue');
+      throw new NotFoundException();
+    }
+    await this.appService.moveQueue();
   }
 }

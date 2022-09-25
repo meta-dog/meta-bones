@@ -46,7 +46,17 @@ export class AppController {
     @Param('app_id') app_id: string,
     @Param('advocate_id') advocate_id: string,
   ): Promise<void> {
-    await this.appService.addReferralToQueue(advocate_id, app_id);
+    try {
+      Logger.log(
+        `Attempting to add referral ${app_id}/${advocate_id} to queue`,
+      );
+      await this.appService.createReferralOrBlacklistCall(advocate_id, app_id);
+    } catch (reason) {
+      Logger.warn(
+        `Referral ${app_id}/${advocate_id} failed so adding to queue`,
+      );
+      await this.appService.addReferralToQueue(advocate_id, app_id);
+    }
   }
 
   @Get('app/queue/move')

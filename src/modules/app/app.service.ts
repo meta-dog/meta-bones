@@ -155,6 +155,16 @@ export class AppService {
     return await this.appModel.create(newApp);
   }
 
+  async createReferralOrBlacklistCall(
+    advocate_id: Advocate['advocate_id'],
+    app_id: App['app_id'],
+  ): Promise<void> {
+    const waitMs = 300 * (1 + Math.random());
+    setTimeout(async () => {
+      await this.createReferralOrBlacklistCall(advocate_id, app_id);
+    }, waitMs);
+  }
+
   private async createReferralOrBlacklist(
     advocate_id: Advocate['advocate_id'],
     app_id: App['app_id'],
@@ -193,7 +203,7 @@ export class AppService {
       );
       Logger.log(`Successfully added ${app_id}/${advocate_id}`);
     } catch (reason) {
-      return Promise.reject(reason);
+      throw reason;
     }
   }
 
@@ -265,6 +275,7 @@ export class AppService {
     const newPendingItem = new PendingItem();
     newPendingItem.advocate_id = advocate_id;
     newPendingItem.app_id = app_id;
+    newPendingItem.attempts = 0;
     Logger.log(`Adding new pending item ${app_id}/${advocate_id}`);
     await this.pendingItemModel.create(newPendingItem);
   }

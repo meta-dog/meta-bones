@@ -1,6 +1,6 @@
 {
   "name": "meta-bones",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "API for Meta-Dog, actually a Cat",
   "author": "david.c.iglesias@gmail.com",
   "private": true,

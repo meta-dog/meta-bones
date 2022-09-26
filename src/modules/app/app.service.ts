@@ -324,7 +324,7 @@ export class AppService {
         Logger.log(`Waiting for next: ${index + 1}/${numPendingItems + 1}`);
         setTimeout(() => {
           index += 1;
-        }, nextWaitMs);
+        }, nextWaitMs * (index + 1));
       } catch (exception) {
         Logger.error(
           `Addition failed; waiting for next: ${index + 1}/${
@@ -333,7 +333,7 @@ export class AppService {
         );
         setTimeout(() => {
           index += 1;
-        }, nextWaitMs);
+        }, nextWaitMs * (index + 1));
       }
     }
   }

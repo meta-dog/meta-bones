@@ -33,31 +33,19 @@ export class AppController {
   @ApiParam({ name: 'app_id', example: '2376737905701576' })
   @ApiOkResponse({ type: GetReferralResponse })
   async index(@Param('app_id') app_id: string): Promise<ReferralInterface> {
-    const { advocate_id } = await this.appService.getReferralForAppByAppId(
-      app_id,
-    );
+    const advocate_id = await this.appService.getReferralForAppByAppId(app_id);
     return { advocate_id };
   }
 
-  @Post('app/:app_id/referral/:advocate_id')
+  @Post('app/:app_id/queue/:advocate_id')
   @ApiParam({ name: 'app_id', example: '2376737905701576' })
   @ApiParam({ name: 'advocate_id', example: 'example.user' })
   async addReferralToQueue(
     @Param('app_id') app_id: string,
     @Param('advocate_id') advocate_id: string,
   ): Promise<void> {
-    try {
-      Logger.log(
-        `Attempting to verify and create referral ${app_id}/${advocate_id}`,
-      );
-      await this.appService.createReferralOrBlacklistCall(advocate_id, app_id);
-      Logger.log(`Successfully created referral ${app_id}/${advocate_id}`);
-    } catch (reason) {
-      Logger.warn(
-        `Referral ${app_id}/${advocate_id} failed so adding to queue`,
-      );
-      await this.appService.addReferralToQueue(advocate_id, app_id);
-    }
+    Logger.log(`Adding referral ${app_id}/${advocate_id} to queue`);
+    await this.appService.addReferralToQueue(advocate_id, app_id);
   }
 
   @Get('app/queue/move')

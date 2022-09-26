@@ -255,6 +255,13 @@ export class AppService {
         );
         throw new NotFoundException();
       }
+      const anyAdvocate = await this.appModel.find({
+        $and: [{ _id: app._id }, { advocates: { advocate_id } }],
+      });
+      if (anyAdvocate.length > 0) {
+        Logger.error(`Attempted dupe referral for ${advocate_id}:${app_id}`);
+        throw new ConflictException();
+      }
       const advocate = await this.advocateModel
         .findOne({ advocate_id: advocate_id })
         .populate('apps');
@@ -281,13 +288,6 @@ export class AppService {
           { $addToSet: { advocates: createdAdvocate._id } },
         );
         return;
-      }
-      const anyAdvocate = await this.appModel.find({
-        $and: [{ _id: app._id }, { advocates: advocate._id }],
-      });
-      if (anyAdvocate.length > 0) {
-        Logger.error(`Attempted dupe referral for ${advocate_id}:${app_id}`);
-        throw new ConflictException();
       }
       await this.advocateModel.updateMany(
         { _id: advocate._id },

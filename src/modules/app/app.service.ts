@@ -321,19 +321,25 @@ export class AppService {
           currentItem.advocate_id,
           currentItem.app_id,
         );
-        Logger.log(`Waiting for next: ${index + 1}/${numPendingItems + 1}`);
-        setTimeout(() => {
-          index += 1;
-        }, nextWaitMs * (index + 1));
+        if (index + 1 < numPendingItems) {
+          Logger.log(`Waiting for next: ${index + 1}/${numPendingItems}`);
+          setTimeout(() => {
+            index += 1;
+          }, nextWaitMs * (index + 1));
+        }
       } catch (exception) {
-        Logger.error(
-          `Addition failed; waiting for next: ${index + 1}/${
-            numPendingItems + 1
-          }`,
-        );
-        setTimeout(() => {
-          index += 1;
-        }, nextWaitMs * (index + 1));
+        if (index + 1 < numPendingItems) {
+          Logger.error(`Addition failed ${index}/${numPendingItems}`);
+          setTimeout(() => {
+            index += 1;
+          }, nextWaitMs * (index + 1));
+        } else {
+          Logger.error(
+            `Addition failed; waiting for next: ${index + 1}/${
+              numPendingItems + 1
+            }`,
+          );
+        }
       }
     }
   }

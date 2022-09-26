@@ -155,9 +155,23 @@ export class AppService {
         app_id,
         advocate_id,
       });
-      if (pendingItem !== null && pendingItem.attempts < MAX_PENDING_ATTEMPTS) {
+      if (pendingItem === null) {
         Logger.warn(
-          `Exception ${exception} accesing url ${url}. Increasing ${app_id}/${advocate_id} pending item attemps`,
+          `Exception ${exception} accesing url ${url}. Adding ${app_id}/${advocate_id} pending item`,
+        );
+        await this.pendingItemModel.findOneAndUpdate(
+          { app_id, advocate_id },
+          { app_id, advocate_id },
+          {
+            upsert: true,
+            returnDocument: 'after',
+            new: true,
+            setDefaultsOnInsert: true,
+          },
+        );
+      } else if (pendingItem.attempts < MAX_PENDING_ATTEMPTS) {
+        Logger.warn(
+          `Exception ${exception} accesing url ${url}. Increasing ${app_id}/${advocate_id} pending item attempts`,
         );
         this.pendingItemModel.updateOne(
           { app_id, advocate_id },

@@ -10,7 +10,7 @@ export class Advocate {
   advocate_id: string;
 
   @Prop({
-    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'App' }],
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'App', default: [] }],
   })
   apps: App[];
 }

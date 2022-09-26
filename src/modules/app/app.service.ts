@@ -223,10 +223,7 @@ export class AppService {
     app_id: App['app_id'],
   ): Promise<void> {
     try {
-      const waitMs = 300 * (1 + Math.random());
-      setTimeout(() => {
-        this.createReferralOrBlacklist(advocate_id, app_id);
-      }, waitMs);
+      await this.createReferralOrBlacklist(advocate_id, app_id);
     } catch (e) {
       throw e;
     }

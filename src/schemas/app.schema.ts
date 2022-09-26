@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import mongoose, { Document } from 'mongoose';
-import { Advocate } from './advocate.schema';
+import { Document } from 'mongoose';
 
 export type AppDocument = App & Document;
 
@@ -12,12 +11,8 @@ export class App {
   @Prop({ required: true, unique: true })
   name: string;
 
-  @Prop({
-    type: [
-      { type: mongoose.Schema.Types.ObjectId, ref: 'Advocate', default: [] },
-    ],
-  })
-  advocates: Advocate[];
+  @Prop({ required: true, default: [] })
+  advocates: string[];
 }
 
 export const AppSchema = SchemaFactory.createForClass(App);

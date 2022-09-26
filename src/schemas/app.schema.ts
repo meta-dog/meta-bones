@@ -13,7 +13,9 @@ export class App {
   name: string;
 
   @Prop({
-    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Advocate' }],
+    type: [
+      { type: mongoose.Schema.Types.ObjectId, ref: 'Advocate', default: [] },
+    ],
   })
   advocates: Advocate[];
 }

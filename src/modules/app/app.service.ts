@@ -119,11 +119,12 @@ export class AppService {
           Logger.error(
             `Did not find a match within url ${url}. Adding ${app_id}/${advocate_id} to blacklist due to invalid link`,
           );
-          this.blacklistItemModel.findOneAndUpdate(
+          await this.blacklistItemModel.findOneAndUpdate(
             { app_id, advocate_id },
             { app_id, advocate_id },
             { upsert: true },
           );
+          await this.pendingItemModel.deleteOne({ app_id, advocate_id });
           return false;
         }
 

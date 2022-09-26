@@ -6,3 +6,5 @@ export interface AppInterface {
 export interface ReferralInterface {
   advocate_id: string;
 }
+
+export type Platform = 'quest' | 'rift';

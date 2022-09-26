@@ -15,7 +15,13 @@ import {
   BlacklistItemDocument,
 } from '@schemas/blacklistitem.schema';
 import { PendingItem, PendingItemDocument } from '@schemas/pendingitem.schema';
-import { MAX_PENDING_ATTEMPTS } from './app.const';
+import {
+  HEADERS,
+  MAX_PENDING_ATTEMPTS,
+  PLATFORM_BASE_URL,
+  REFERRAL_BASE_URL,
+} from './app.const';
+import { Platform } from './app.types';
 
 @Injectable()
 export class AppService {
@@ -84,29 +90,33 @@ export class AppService {
     );
   }
 
-  private async getNameFrom(advocate_id: string, app_id: string) {
+  private async getAvailableIn(platform: Platform, app_id: string) {
+    const url = `/${platform}/${app_id}`;
+    Logger.log(
+      `Fetching url ${url} to check platform ${platform} for app ${app_id}`,
+    );
+    try {
+      const request = await axios.get(url, {
+        baseURL: PLATFORM_BASE_URL,
+        headers: HEADERS,
+      });
+      const { data } = request;
+      return (data as string).includes(`"${PLATFORM_BASE_URL}${url}"`);
+    } catch (exception) {
+      Logger.log(
+        `Unable to fetch url ${url} to check platform ${platform} for app ${app_id}`,
+      );
+      return false;
+    }
+  }
+
+  private async getAppInfoFrom(advocate_id: string, app_id: string) {
     const url = `/${advocate_id}/${app_id}`;
     Logger.log(`Fetching url ${url}`);
     try {
       const request = await axios.get(url, {
-        baseURL: 'https://www.oculus.com/appreferrals',
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36',
-          'Accept-Language': 'en-GB,en;q=0.9',
-          accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-          'sec-ch-ua-platform': 'Windows',
-          'sec-ch-ua':
-            'Google Chrome";v="105", "Not)A;Brand";v="8", "Chromium";v="105"',
-          'sec-ch-ua-mobile': '?0',
-          'sec-fetch-dest': 'Document',
-          'sec-fetch-mode': 'navigate',
-          'sec-fetch-site': 'none',
-          'sec-fetch-user': '?1',
-          'upgrade-insecure-requests': '1',
-          dnt: '1',
-        },
+        baseURL: REFERRAL_BASE_URL,
+        headers: HEADERS,
       });
       const { data } = request;
       const regex = /(?<=Get\ 25%\ off\ )(.*?)(?= \| Meta Quest)/g;
@@ -133,7 +143,9 @@ export class AppService {
       const [name] = match;
       const decodedName = decode(name);
       Logger.log(`Found App with name: ${decodedName}`);
-      return decode(decodedName);
+      const has_quest = await this.getAvailableIn('quest', app_id);
+      const has_rift = await this.getAvailableIn('rift', app_id);
+      return { name: decode(decodedName), has_quest, has_rift };
     } catch (exception) {
       await this.increaseAttemptsOrBlacklist(advocate_id, app_id, url);
       return false;
@@ -144,13 +156,20 @@ export class AppService {
     advocate_id: App['advocates'][number],
     app_id: App['app_id'],
   ): Promise<void> {
-    const name = await this.getNameFrom(advocate_id, app_id);
-    if (name === false) throw new NotFoundException();
+    const appInfo = await this.getAppInfoFrom(advocate_id, app_id);
+    if (appInfo === false) throw new NotFoundException();
+    const { name, has_quest, has_rift } = appInfo;
 
     const app = await this.appModel.findOne({ app_id });
     if (app === null) {
       Logger.log(`Creating App ${app_id} with Advocate ${advocate_id}`);
-      await this.appModel.create({ app_id, name, advocates: [advocate_id] });
+      await this.appModel.create({
+        app_id,
+        name,
+        has_quest,
+        has_rift,
+        advocates: [advocate_id],
+      });
     } else {
       Logger.log(`Updating App ${app_id}: adding Advocate ${advocate_id}`);
       await this.appModel.findOneAndUpdate(
@@ -240,5 +259,40 @@ export class AppService {
       { advocate_id, app_id },
       { upsert: true, setDefaultsOnInsert: true },
     );
+  }
+
+  private async movePlatformItem({ app_id }: App) {
+    try {
+      const has_quest = await this.getAvailableIn('quest', app_id);
+      const has_rift = await this.getAvailableIn('rift', app_id);
+      Logger.log(
+        `Updating app ${app_id} with Quest: ${has_quest} & Rift: ${has_rift}`,
+      );
+      await this.appModel.findOneAndUpdate({ app_id }, { has_quest, has_rift });
+    } catch (error) {
+      Logger.error(`Error getting platform info for ${app_id}: ${error}`);
+    }
+  }
+
+  private async movePlatformItems(items: App[], index: number) {
+    if (index >= items.length) return;
+    const currentItem = items[index];
+    const nextWaitMs = 300 * (1 + Math.random());
+    Logger.log(
+      `Attempting to check platform for element ${index + 1}/${items.length}`,
+    );
+    await this.movePlatformItem(currentItem);
+    await this.timeout(nextWaitMs);
+    await this.movePlatformItems(items, index + 1);
+  }
+
+  async movePlatformInfoQueue() {
+    const itemsPendingPlatformCheck = await this.appModel.find({
+      $or: [{ has_quest: undefined }, { has_rift: undefined }],
+    });
+    const numPendingItems = itemsPendingPlatformCheck.length;
+
+    Logger.log(`Starting the queue movement, pending: ${numPendingItems}`);
+    await this.movePlatformItems(itemsPendingPlatformCheck, 0);
   }
 }

@@ -11,4 +11,12 @@ export class GetAppResponse implements AppInterface {
   @ApiProperty({ description: 'The name of the App' })
   @Expose()
   name: string;
+
+  @ApiProperty({ description: 'Whether the App is in the Quest store' })
+  @Expose()
+  has_quest: boolean;
+
+  @ApiProperty({ description: 'Whether the App is in the Rift store' })
+  @Expose()
+  has_rift: boolean;
 }

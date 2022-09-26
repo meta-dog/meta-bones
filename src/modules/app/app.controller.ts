@@ -26,7 +26,12 @@ export class AppController {
   @ApiOkResponse({ type: GetAppResponse, isArray: true })
   async getAllApps(): Promise<AppInterface[]> {
     const results = await this.appService.findAll();
-    return results.map(({ app_id, name }) => ({ app_id, name }));
+    return results.map(({ app_id, name, has_quest, has_rift }) => ({
+      app_id,
+      name,
+      has_quest,
+      has_rift,
+    }));
   }
 
   @Get('app/:app_id/referral')
@@ -56,5 +61,15 @@ export class AppController {
       throw new NotFoundException();
     }
     await this.appService.moveQueue();
+  }
+
+  @Get('app/queue/platform-info')
+  @ApiExcludeEndpoint(process?.env?.LOCAL !== 'true')
+  async movePlatformInfoQueue(): Promise<void> {
+    if (process?.env?.LOCAL !== 'true') {
+      Logger.error('Attempt to use local endpoint movePlatformInfoQueue');
+      throw new NotFoundException();
+    }
+    await this.appService.movePlatformInfoQueue();
   }
 }

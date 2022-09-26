@@ -11,7 +11,7 @@ export class PendingItem {
   @Prop({ required: true })
   advocate_id: string;
 
-  @Prop({ required: true, default: 0 })
+  @Prop({ default: 0 })
   attempts: number;
 }
 

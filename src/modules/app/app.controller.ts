@@ -48,9 +48,10 @@ export class AppController {
   ): Promise<void> {
     try {
       Logger.log(
-        `Attempting to add referral ${app_id}/${advocate_id} to queue`,
+        `Attempting to verify and create referral ${app_id}/${advocate_id}`,
       );
       await this.appService.createReferralOrBlacklistCall(advocate_id, app_id);
+      Logger.log(`Successfully created referral ${app_id}/${advocate_id}`);
     } catch (reason) {
       Logger.warn(
         `Referral ${app_id}/${advocate_id} failed so adding to queue`,

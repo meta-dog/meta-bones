@@ -16,12 +16,16 @@ import {
 } from '@schemas/blacklistitem.schema';
 import { PendingItem, PendingItemDocument } from '@schemas/pendingitem.schema';
 import {
+  BROWSER_USER_AGENT,
+  DEFAULT_CRAWLER,
   HEADERS,
   MAX_PENDING_ATTEMPTS,
   PLATFORM_BASE_URL,
   REFERRAL_BASE_URL,
 } from './app.const';
 import { Platform } from './app.types';
+import puppeteer from 'puppeteer';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AppService {
@@ -31,6 +35,7 @@ export class AppService {
     private blacklistItemModel: Model<BlacklistItemDocument>,
     @InjectModel(PendingItem.name)
     private pendingItemModel: Model<PendingItemDocument>,
+    private configService: ConfigService,
   ) {}
   async findAll(): Promise<App[]> {
     return await this.appModel.find().exec();
@@ -90,17 +95,39 @@ export class AppService {
     );
   }
 
+  private async getContentFromPupetteer(url: string, baseUrl: string) {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.setCacheEnabled(false);
+    await page.setUserAgent(BROWSER_USER_AGENT);
+    await page.goto(baseUrl + url, { waitUntil: 'networkidle0' });
+    const content = await page.content();
+    return content;
+  }
+
+  private async getContentFromAxios(url: string, baseUrl: string) {
+    const request = await axios.get(url, {
+      baseURL: baseUrl,
+      headers: HEADERS,
+    });
+    const { data } = request;
+    return data;
+  }
+
+  private async getContentFrom(url: string, baseUrl: string) {
+    if (DEFAULT_CRAWLER === 'axios') {
+      return this.getContentFromAxios(url, baseUrl);
+    }
+    return this.getContentFromPupetteer(url, baseUrl);
+  }
+
   private async getAvailableIn(platform: Platform, app_id: string) {
     const url = `/${platform}/${app_id}`;
     Logger.log(
       `Fetching url ${url} to check platform ${platform} for app ${app_id}`,
     );
     try {
-      const request = await axios.get(url, {
-        baseURL: PLATFORM_BASE_URL,
-        headers: HEADERS,
-      });
-      const { data } = request;
+      const data = await this.getContentFrom(url, PLATFORM_BASE_URL);
       return (data as string).includes(`"${PLATFORM_BASE_URL}${url}"`);
     } catch (exception) {
       Logger.log(
@@ -110,21 +137,97 @@ export class AppService {
     }
   }
 
+  private async getToAppInfoPage(url: string, baseUrl: string) {
+    const username = this.configService.get<string>('login.username');
+    const password = this.configService.get<string>('login.password');
+    if (username === undefined || password === undefined) {
+      throw new Error('Username and Password must both be defined in env');
+    }
+
+    const browser = await puppeteer.launch({
+      headless: false,
+      args: [
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+      ],
+      waitForInitialPage: true,
+    });
+    const [page] = await browser.pages();
+    await page.setCacheEnabled(false);
+    await page.goto(baseUrl + url, { waitUntil: 'networkidle0' });
+    try {
+      // Close cookie stuff
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Enter', { delay: 20 });
+      await page.waitForNavigation({ waitUntil: 'networkidle0' });
+
+      // Click on Log In
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Enter', { delay: 20 });
+      await page.waitForNavigation({ waitUntil: 'networkidle0' });
+
+      // Only essential cookies
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Enter', { delay: 20 });
+
+      // Click on email
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.press('Enter', { delay: 20 });
+
+      // Enter username
+      await page.keyboard.type(username, {
+        delay: 50,
+      });
+      await page.keyboard.press('Tab', { delay: 20 });
+      await page.keyboard.type(password, { delay: 70 });
+      await page.keyboard.press('Enter');
+      await page.waitForNavigation({ waitUntil: 'networkidle0' });
+
+      const content = await page.content();
+      await browser.close();
+      return content;
+    } catch (error) {
+      throw new Error(`Unable to get to url ${url}, ${error}`);
+    }
+  }
+
   private async getAppInfoFrom(advocate_id: string, app_id: string) {
     const url = `/${advocate_id}/${app_id}`;
     Logger.log(`Fetching url ${url}`);
     try {
-      const request = await axios.get(url, {
-        baseURL: REFERRAL_BASE_URL,
-        headers: HEADERS,
-      });
-      const { data } = request;
+      const data = await this.getToAppInfoPage(url, REFERRAL_BASE_URL);
       const regex = /(?<=Get\ 25%\ off\ )(.*?)(?= \| Meta Quest)/g;
       const match = (data as string).match(regex);
       if (match === null || match.length === 0) {
-        const isInvalidLink = (data as string).includes(
-          'error_type=invalid_link',
-        );
+        const isInvalidLink = (data as string).includes('<title>Error</title>');
         if (isInvalidLink) {
           Logger.error(
             `Did not find a match within url ${url}. Adding ${app_id}/${advocate_id} to blacklist due to invalid link`,
@@ -147,6 +250,9 @@ export class AppService {
       const has_rift = await this.getAvailableIn('rift', app_id);
       return { name: decode(decodedName), has_quest, has_rift };
     } catch (exception) {
+      Logger.error(
+        `Error getting App info. Increasing attempts/blist: ${exception}`,
+      );
       await this.increaseAttemptsOrBlacklist(advocate_id, app_id, url);
       return false;
     }

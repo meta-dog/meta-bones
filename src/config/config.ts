@@ -5,6 +5,10 @@ interface Config {
     type?: string;
     uri?: string;
   };
+  login: {
+    username?: string;
+    password?: string;
+  };
 }
 
 export const config = (): Config => ({
@@ -13,5 +17,9 @@ export const config = (): Config => ({
     dbName: process.env.DATABASE_NAME,
     type: process.env.DATABASE_TYPE,
     uri: process.env.DATABASE_URL,
+  },
+  login: {
+    username: process.env.META_LOGIN,
+    password: process.env.META_PASSWORD,
   },
 });

@@ -298,6 +298,10 @@ export class AppService {
         { $addToSet: { advocates: advocate._id } },
       );
       Logger.log(`Successfully added ${app_id}/${advocate_id}`);
+      Logger.log(`Removing pending item ${app_id}/${advocate_id}`);
+      await this.pendingItemModel.remove({ app_id, advocate_id });
+      Logger.log(`Removing blacklist item ${app_id}/${advocate_id}`);
+      await this.blacklistItemModel.remove({ app_id, advocate_id });
     } catch (reason) {
       throw reason;
     }
@@ -317,13 +321,15 @@ export class AppService {
           currentItem.advocate_id,
           currentItem.app_id,
         );
-        Logger.log(`Waiting for next: ${index + 1}/${numPendingItems}`);
+        Logger.log(`Waiting for next: ${index + 1}/${numPendingItems + 1}`);
         setTimeout(() => {
           index += 1;
         }, nextWaitMs);
       } catch (exception) {
         Logger.error(
-          `Addition failed; waiting for next: ${index + 1}/${numPendingItems}`,
+          `Addition failed; waiting for next: ${index + 1}/${
+            numPendingItems + 1
+          }`,
         );
         setTimeout(() => {
           index += 1;
@@ -354,7 +360,7 @@ export class AppService {
       Logger.warn(
         `Discarding new pending item ${app_id}/${advocate_id} due to being in the queue`,
       );
-      throw new ConflictException();
+      return;
     }
     const advocateAppLink = await this.appModel
       .findOne({ app_id })

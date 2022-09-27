@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Logger,
@@ -16,6 +17,7 @@ import { AppInterface, ReferralInterface } from './app.types';
 import { AppService } from './app.service';
 import { GetAppResponse } from './responses/get-apps.response';
 import { GetReferralResponse } from './responses/get-referral.response';
+import { AppIdConstraint, AdvocateIdConstraint } from './app.utils';
 
 @Controller()
 @ApiTags('app')
@@ -37,18 +39,39 @@ export class AppController {
   @Get('app/:app_id/referral')
   @ApiParam({ name: 'app_id', example: '2376737905701576' })
   @ApiOkResponse({ type: GetReferralResponse })
-  async index(@Param('app_id') app_id: string): Promise<ReferralInterface> {
+  async getReferral(
+    @Param('app_id') app_id: string,
+  ): Promise<ReferralInterface> {
+    const appIdValidator = new AppIdConstraint();
+    if (!appIdValidator.validate(app_id)) {
+      Logger.error(`Malformed app_id ${app_id} on ${this.getReferral.name}`);
+      throw new BadRequestException();
+    }
     const advocate_id = await this.appService.getReferralForAppByAppId(app_id);
     return { advocate_id };
   }
 
   @Post('app/:app_id/queue/:advocate_id')
   @ApiParam({ name: 'app_id', example: '2376737905701576' })
-  @ApiParam({ name: 'advocate_id', example: 'example.user' })
+  @ApiParam({ name: 'advocate_id', example: 'example-user' })
   async addReferralToQueue(
     @Param('app_id') app_id: string,
     @Param('advocate_id') advocate_id: string,
   ): Promise<void> {
+    const appIdValidator = new AppIdConstraint();
+    if (!appIdValidator.validate(app_id)) {
+      Logger.error(
+        `Malformed app_id ${app_id} on ${this.addReferralToQueue.name}`,
+      );
+      throw new BadRequestException();
+    }
+    const advocateIdValidator = new AdvocateIdConstraint();
+    if (!advocateIdValidator.validate(advocate_id)) {
+      Logger.error(
+        `Malformed advocate_id ${advocate_id} on ${this.addReferralToQueue.name}`,
+      );
+      throw new BadRequestException();
+    }
     Logger.log(`Adding referral ${app_id}/${advocate_id} to queue`);
     await this.appService.addReferralToQueue(advocate_id, app_id);
   }

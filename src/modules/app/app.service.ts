@@ -76,7 +76,9 @@ export class AppService {
     }
     if (pendingItem.attempts < MAX_PENDING_ATTEMPTS) {
       Logger.error(
-        `📃 Did not find a match within url ${url} for unknown reasons. Increasing ${app_id}/${advocate_id} attempts by one from ${pendingItem.attempts}`,
+        `📃 Did not find a match within url ${url} for unknown reasons. Setting ${app_id}/${advocate_id} attempts to ${
+          pendingItem.attempts + 1
+        }`,
       );
       await this.pendingItemModel.findOneAndUpdate(
         { app_id, advocate_id },
@@ -140,6 +142,17 @@ export class AppService {
 
   browser: puppeteer.Browser | null = null;
 
+  private async repeatKeyPress(
+    times: number,
+    page: puppeteer.Page,
+    key: puppeteer.KeyInput,
+    delay = 20,
+  ) {
+    for (let i = 1; i <= times; i++) {
+      await page.keyboard.press(key, { delay });
+    }
+  }
+
   private async handleLoginFromReferralPage(page: puppeteer.Page) {
     const username = this.configService.get<string>('login.username');
     const password = this.configService.get<string>('login.password');
@@ -148,59 +161,33 @@ export class AppService {
     }
 
     Logger.log('🍪 Closing first cookie alert');
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
+    await this.repeatKeyPress(19, page, 'Tab');
     await page.keyboard.press('Enter', { delay: 20 });
+    Logger.log('⏳ Wait for navigation');
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
-    Logger.log('🖱️ Clicking Log In');
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
+    Logger.log('🖱️  Clicking Log In');
+    await this.repeatKeyPress(3, page, 'Tab');
     await page.keyboard.press('Enter', { delay: 20 });
+    Logger.log('⏳ Wait for navigation');
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
     Logger.log('🍪 Dismissing second cookie alert');
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
+    await this.repeatKeyPress(2, page, 'Tab');
     await page.keyboard.press('Enter', { delay: 20 });
 
-    Logger.log('🖱️ Clicking Log In');
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    await page.keyboard.press('Tab', { delay: 20 });
+    Logger.log('🖱️  Clicking Log In');
+    await this.repeatKeyPress(4, page, 'Tab');
     await page.keyboard.press('Enter', { delay: 20 });
 
     Logger.log('👤 Entering username');
-    await page.keyboard.type(username, {
-      delay: 50,
-    });
+    await page.keyboard.type(username, { delay: 50 });
     await page.keyboard.press('Tab', { delay: 20 });
     Logger.log('🔑 Entering password');
     await page.keyboard.type(password, { delay: 70 });
     Logger.log('🙏 Submit login info');
     await page.keyboard.press('Enter');
+    Logger.log('⏳ Wait for navigation');
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
   }
 
@@ -236,6 +223,7 @@ export class AppService {
 
       const [page] = await this.browser.pages();
       await page.setCacheEnabled(false);
+      Logger.log('⏳ Wait for navigation');
       await page.goto(baseUrl + url, { waitUntil: 'networkidle0' });
 
       const currentUrl = page.url();

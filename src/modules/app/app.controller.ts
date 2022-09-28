@@ -44,7 +44,7 @@ export class AppController {
   ): Promise<ReferralInterface> {
     const appIdValidator = new AppIdConstraint();
     if (!appIdValidator.validate(app_id)) {
-      Logger.error(`Malformed app_id ${app_id} on ${this.getReferral.name}`);
+      Logger.error(`👺 Malformed app_id ${app_id} on ${this.getReferral.name}`);
       throw new BadRequestException();
     }
     const advocate_id = await this.appService.getReferralForAppByAppId(app_id);
@@ -61,14 +61,14 @@ export class AppController {
     const appIdValidator = new AppIdConstraint();
     if (!appIdValidator.validate(app_id)) {
       Logger.error(
-        `Malformed app_id ${app_id} on ${this.addReferralToQueue.name}`,
+        `👺 Malformed app_id ${app_id} on ${this.addReferralToQueue.name}`,
       );
       throw new BadRequestException();
     }
     const advocateIdValidator = new AdvocateIdConstraint();
     if (!advocateIdValidator.validate(advocate_id)) {
       Logger.error(
-        `Malformed advocate_id ${advocate_id} on ${this.addReferralToQueue.name}`,
+        `👺 Malformed advocate_id ${advocate_id} on ${this.addReferralToQueue.name}`,
       );
       throw new BadRequestException();
     }
@@ -80,7 +80,7 @@ export class AppController {
   @ApiExcludeEndpoint(process?.env?.LOCAL !== 'true')
   async moveQueue(): Promise<void> {
     if (process?.env?.LOCAL !== 'true') {
-      Logger.error('Attempt to use local endpoint moveQueue');
+      Logger.error('👿 Attempt to use local endpoint moveQueue');
       throw new NotFoundException();
     }
     await this.appService.moveQueue();
@@ -90,7 +90,7 @@ export class AppController {
   @ApiExcludeEndpoint(process?.env?.LOCAL !== 'true')
   async movePlatformInfoQueue(): Promise<void> {
     if (process?.env?.LOCAL !== 'true') {
-      Logger.error('Attempt to use local endpoint movePlatformInfoQueue');
+      Logger.error('👿 Attempt to use local endpoint movePlatformInfoQueue');
       throw new NotFoundException();
     }
     await this.appService.movePlatformInfoQueue();

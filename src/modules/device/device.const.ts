@@ -1,7 +1,7 @@
 export const REGIONS = ['ES', 'UK', 'US', 'NL'];
 export const MAX_PENDING_ATTEMPTS = 10;
 export const DEVICE_REFERRAL_BASE_URL = 'https://www.oculus.com/referrals/link';
-export const MINUTES_CRON = 15;
+export const MINUTES_CRON = 30;
 export const INVALID_LINK_TEXT = '<title>Error</title>';
 export const BROWSER_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36';

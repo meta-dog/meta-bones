@@ -7,22 +7,52 @@ import {
   Param,
   Post,
 } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import {
   ApiExcludeEndpoint,
   ApiOkResponse,
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { AppInterface, ReferralInterface } from './app.types';
+import { CronJob } from 'cron';
+
+import { MINUTES_CRON } from './app.const';
 import { AppService } from './app.service';
+import { AppInterface, ReferralInterface } from './app.types';
+import { AppIdConstraint, AdvocateIdConstraint } from './app.utils';
 import { GetAppResponse } from './responses/get-apps.response';
 import { GetReferralResponse } from './responses/get-referral.response';
-import { AppIdConstraint, AdvocateIdConstraint } from './app.utils';
 
 @Controller()
 @ApiTags('app')
 export class AppController {
-  constructor(private appService: AppService) {}
+  constructor(
+    private appService: AppService,
+    private schedulerRegistry: SchedulerRegistry,
+  ) {
+    if (process.env?.LOCAL === 'true') {
+      const { name } = this.moveQueue;
+      Logger.log(
+        `🤖🚿 Getting job ${name} ready to run every ${MINUTES_CRON}m`,
+      );
+      const job = new CronJob({
+        cronTime: `0 */${MINUTES_CRON} * * * *`,
+        onTick: () => {
+          Logger.log(
+            `🤖⚒️ Starting job ${name}; running every ${MINUTES_CRON}m!`,
+          );
+          this.moveQueue();
+        },
+        onComplete: () =>
+          Logger.log(
+            `🤖🏆 Finished job ${name}; running every ${MINUTES_CRON}m!`,
+          ),
+        runOnInit: true,
+      });
+      this.schedulerRegistry.addCronJob(name, job);
+      job.start();
+    }
+  }
 
   @Get('apps')
   @ApiOkResponse({ type: GetAppResponse, isArray: true })
@@ -80,6 +110,11 @@ export class AppController {
   @ApiExcludeEndpoint(process?.env?.LOCAL !== 'true')
   async moveQueue(): Promise<void> {
     if (process?.env?.LOCAL !== 'true') {
+      const job = this.schedulerRegistry.getCronJob(this.moveQueue.name);
+      if (job !== null && job.running) {
+        Logger.error(`🤖 Stopping Job as we are not locals here 👽`);
+        job.stop();
+      }
       Logger.error('👿 Attempt to use local endpoint moveQueue');
       throw new NotFoundException();
     }

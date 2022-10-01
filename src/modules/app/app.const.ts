@@ -22,3 +22,4 @@ export const HEADERS = {
 
 export const DEFAULT_CRAWLER: 'axios' | 'puppeteer' = 'axios';
 export const INVALID_LINK_TEXT = '<title>Error</title>';
+export const MINUTES_CRON = 15;

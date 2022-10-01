@@ -5,16 +5,13 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { App, AppDocument } from '@schemas/app.schema';
+import puppeteer from 'puppeteer';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import axios from 'axios';
 import { decode } from 'html-entities';
-import {
-  BlacklistItem,
-  BlacklistItemDocument,
-} from '@schemas/blacklistitem.schema';
-import { PendingItem, PendingItemDocument } from '@schemas/pendingitem.schema';
+import { Model } from 'mongoose';
+
 import {
   BROWSER_USER_AGENT,
   DEFAULT_CRAWLER,
@@ -25,8 +22,12 @@ import {
   REFERRAL_BASE_URL,
 } from './app.const';
 import { Platform } from './app.types';
-import puppeteer from 'puppeteer';
-import { ConfigService } from '@nestjs/config';
+import { App, AppDocument } from '@schemas/app.schema';
+import {
+  BlacklistItem,
+  BlacklistItemDocument,
+} from '@schemas/blacklistitem.schema';
+import { PendingItem, PendingItemDocument } from '@schemas/pendingitem.schema';
 
 @Injectable()
 export class AppService {
@@ -37,7 +38,12 @@ export class AppService {
     @InjectModel(PendingItem.name)
     private pendingItemModel: Model<PendingItemDocument>,
     private configService: ConfigService,
-  ) {}
+  ) {
+    this.isQueueRunning = false;
+  }
+
+  isQueueRunning: boolean;
+
   async findAll(): Promise<App[]> {
     return await this.appModel.find().exec();
   }
@@ -296,7 +302,7 @@ export class AppService {
 
     const app = await this.appModel.findOne({ app_id });
     if (app === null) {
-      Logger.log(`🧙‍♂️ Creating App ${app_id} with Advocate ${advocate_id}`);
+      Logger.log(`🧙‍ Creating App ${app_id} with Advocate ${advocate_id}`);
       await this.appModel.create({
         app_id,
         name,
@@ -305,7 +311,7 @@ export class AppService {
         advocates: [advocate_id],
       });
     } else {
-      Logger.log(`🫂 Updating App ${app_id}: adding Advocate ${advocate_id}`);
+      Logger.log(`🫂  Updating App ${app_id}: adding Advocate ${advocate_id}`);
       await this.appModel.findOneAndUpdate(
         { app_id },
         { $addToSet: { advocates: advocate_id } },
@@ -339,13 +345,19 @@ export class AppService {
     if (index >= items.length) return;
     const currentItem = items[index];
     const nextWaitMs = 300 * (1 + Math.random());
-    Logger.log(`🫡 Attempting to create ${index + 1}/${items.length}`);
+    Logger.log(`🫡  Attempting to create ${index + 1}/${items.length}`);
     await this.movePendingItem(currentItem);
     await this.timeout(nextWaitMs);
     await this.moveItems(items, index + 1);
   }
 
   async moveQueue() {
+    if (this.isQueueRunning) {
+      Logger.log(`🛂  Queue is already running, please wait for your turn`);
+      return;
+    }
+
+    this.isQueueRunning = true;
     const pendingItems = await this.pendingItemModel.find();
     const numPendingItems = pendingItems.length;
 
@@ -356,6 +368,7 @@ export class AppService {
     await this.browser?.close();
     this.browser = null;
     Logger.log('😪 All referral queue items handled, going back to sleep!');
+    this.isQueueRunning = false;
   }
 
   async addReferralToQueue(

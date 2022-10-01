@@ -42,6 +42,10 @@ export class RegionService {
 
   isQueueRunning: boolean;
 
+  async findAll() {
+    return await this.deviceReferralModel.find();
+  }
+
   async getReferralFromRegion(
     region: Region['region'],
   ): Promise<Region['advocates'][number]> {

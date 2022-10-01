@@ -19,9 +19,10 @@ import { AdvocateIdConstraint } from '../advocate/advocate.utils';
 
 import { MINUTES_CRON } from './device.const';
 import { RegionService } from './region.service';
-import { RegionReferralInterface } from './region.types';
+import { RegionInterface, RegionReferralInterface } from './region.types';
 import { RegionConstraint } from './region.utils';
 import { GetRegionReferralResponse } from './responses/get-device-referral.response';
+import { GetRegionResponse } from './responses/get-regions.response';
 
 @Controller()
 @ApiTags('region')
@@ -54,6 +55,12 @@ export class RegionController {
     }
   }
 
+  @Get('regions')
+  @ApiOkResponse({ type: GetRegionResponse, isArray: true })
+  async getAllApps(): Promise<RegionInterface[]> {
+    const results = await this.deviceService.findAll();
+    return results.map(({ region }) => ({ region }));
+  }
   @Get('region/:region/referral')
   @ApiParam({ name: 'region', example: 'ES' })
   @ApiOkResponse({ type: GetRegionReferralResponse })

@@ -54,6 +54,20 @@ export class RegionService {
     return regionAdvocates[winnerIndex];
   }
 
+  private async isDuplicatedAdvocate(advocate_id: string) {
+    const deviceReferrals = await this.deviceReferralModel
+      .find()
+      .populate('advocates');
+
+    const advocates = new Set<string>(
+      deviceReferrals.reduce(
+        (prev, { advocates }) => [...prev, ...advocates],
+        [] as string[],
+      ),
+    );
+    return advocates.has(advocate_id);
+  }
+
   async addRegionReferralToQueue(
     advocate_id: RegionPendingItem['advocate_id'],
     region: RegionPendingItem['region'],
@@ -80,13 +94,8 @@ export class RegionService {
       );
       throw new UnprocessableEntityException();
     }
-    const advocateRegionLink = await this.deviceReferralModel
-      .findOne({ region })
-      .populate('advocates');
-    if (
-      advocateRegionLink !== null &&
-      advocateRegionLink.advocates.some((adv_id) => adv_id === advocate_id)
-    ) {
+
+    if (await this.isDuplicatedAdvocate(advocate_id)) {
       Logger.error(
         `🤼 Device Referral: Error adding device referral for ${advocate_id}/${region}: conflict`,
       );
@@ -289,6 +298,10 @@ export class RegionService {
     advocate_id: Region['advocates'][number],
     region: Region['region'],
   ): Promise<void> {
+    if (await this.isDuplicatedAdvocate(advocate_id)) {
+      throw new ConflictException();
+    }
+
     const validRegion = await this.validateRegionReferral(advocate_id, region);
     if (validRegion === false) throw new NotFoundException();
 

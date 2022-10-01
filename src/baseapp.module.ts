@@ -4,6 +4,7 @@ import { config } from './config';
 import { AppModule } from './modules/app/app.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
+import { RegionModule } from './modules/device/device.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ScheduleModule } from '@nestjs/schedule';
         dbName: config.get('database.dbName'),
       }),
     }),
+    RegionModule,
     AppModule,
     ScheduleModule.forRoot(),
   ],

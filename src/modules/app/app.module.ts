@@ -4,11 +4,14 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { App, AppSchema } from '@schemas/app.schema';
-import { PendingItem, PendingItemSchema } from '@schemas/pendingitem.schema';
+import {
+  PendingItem,
+  PendingItemSchema,
+} from '@schemas/app-pending-item.schema';
 import {
   BlacklistItem,
   BlacklistItemSchema,
-} from '@schemas/blacklistitem.schema';
+} from '@schemas/app-blacklist-item.schema';
 
 @Module({
   imports: [

@@ -15,11 +15,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CronJob } from 'cron';
+import { AdvocateIdConstraint } from '../advocate/advocate.utils';
 
 import { MINUTES_CRON } from './app.const';
 import { AppService } from './app.service';
 import { AppInterface, ReferralInterface } from './app.types';
-import { AppIdConstraint, AdvocateIdConstraint } from './app.utils';
+import { AppIdConstraint } from './app.utils';
 import { GetAppResponse } from './responses/get-apps.response';
 import { GetReferralResponse } from './responses/get-referral.response';
 

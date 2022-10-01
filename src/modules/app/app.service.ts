@@ -26,8 +26,11 @@ import { App, AppDocument } from '@schemas/app.schema';
 import {
   BlacklistItem,
   BlacklistItemDocument,
-} from '@schemas/blacklistitem.schema';
-import { PendingItem, PendingItemDocument } from '@schemas/pendingitem.schema';
+} from '@schemas/app-blacklist-item.schema';
+import {
+  PendingItem,
+  PendingItemDocument,
+} from '@schemas/app-pending-item.schema';
 
 @Injectable()
 export class AppService {
@@ -177,6 +180,7 @@ export class AppService {
     await page.keyboard.press('Enter', { delay: 20 });
     Logger.log('⏳ Wait for navigation');
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
+    await page.waitForSelector('div[role=button]', {});
 
     Logger.log('🍪 Dismissing second cookie alert');
     await this.repeatKeyPress(2, page, 'Tab');
@@ -229,6 +233,7 @@ export class AppService {
 
       const [page] = await this.browser.pages();
       await page.setCacheEnabled(false);
+      await page.setUserAgent(BROWSER_USER_AGENT);
       Logger.log('⏳ Wait for navigation');
       await page.goto(baseUrl + url, { waitUntil: 'networkidle0' });
 
@@ -407,7 +412,7 @@ export class AppService {
       );
       throw new ConflictException();
     }
-    Logger.log(`Adding new pending item ${app_id}/${advocate_id}`);
+    Logger.log(`➕ Adding new pending item ${app_id}/${advocate_id}`);
     await this.pendingItemModel.findOneAndUpdate(
       { advocate_id, app_id },
       { advocate_id, app_id },
@@ -424,7 +429,7 @@ export class AppService {
       );
       await this.appModel.findOneAndUpdate({ app_id }, { has_quest, has_rift });
     } catch (error) {
-      Logger.error(`Error getting platform info for ${app_id}: ${error}`);
+      Logger.error(`🙈 Error getting platform info for ${app_id}: ${error}`);
     }
   }
 

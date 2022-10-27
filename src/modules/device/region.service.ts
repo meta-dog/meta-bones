@@ -191,14 +191,30 @@ export class RegionService {
     await page.keyboard.press('Enter', { delay: 20 });
 
     Logger.log('🖱️  Device Referral: Clicking Log In');
-    await this.repeatKeyPress(4, page, 'Tab');
-    await page.keyboard.press('Enter', { delay: 20 });
+    const loginContent = await page.content();
+    if (loginContent.includes('aria-label="Log in with email address"')) {
+      Logger.log('📨 Go to log in via email');
+      await this.repeatKeyPress(4, page, 'Tab');
+      await page.keyboard.press('Enter', { delay: 50 });
 
-    Logger.log('👤 Device Referral: Entering username');
-    await page.keyboard.type(username, { delay: 50 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    Logger.log('🔑 Device Referral: Entering password');
-    await page.keyboard.type(password, { delay: 70 });
+      Logger.log('👤 Device Referral: Entering username');
+      await page.keyboard.type(username, { delay: 100 });
+      await page.keyboard.press('Tab', { delay: 100 });
+      await page.keyboard.press('Tab', { delay: 100 });
+      Logger.log('🔑 Device Referral: Entering password');
+      await page.keyboard.type(password, { delay: 125 });
+    } else {
+      Logger.log('📨 Device Referral: Direct login - tab to email');
+      await page.keyboard.press('Tab', { delay: 100 });
+      Logger.log('👤 Device Referral: Entering username');
+      await page.keyboard.type(username, { delay: 100 });
+      await page.keyboard.press('Tab', { delay: 100 });
+      await page.keyboard.press('Enter', { delay: 50 });
+      await this.repeatKeyPress(4, page, 'Tab');
+      Logger.log('🔑 Device Referral: Entering password');
+      await page.keyboard.type(password, { delay: 125 });
+      await page.keyboard.press('Enter', { delay: 50 });
+    }
     Logger.log('🙏 Device Referral: Submit login info');
     await page.keyboard.press('Enter');
     Logger.log('⏳ Device Referral: Wait for navigation');
@@ -222,6 +238,7 @@ export class RegionService {
         '--disable-renderer-backgrounding',
       ],
       waitForInitialPage: true,
+      headless: true,
     });
   }
 
@@ -236,6 +253,8 @@ export class RegionService {
       }
 
       const [page] = await this.browser.pages();
+      page.setDefaultNavigationTimeout(90000);
+      page.setDefaultTimeout(90000);
       await page.setCacheEnabled(false);
       await page.setUserAgent(BROWSER_USER_AGENT);
       Logger.log('⏳ Device Referral: Wait for navigation');

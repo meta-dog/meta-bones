@@ -1,4 +1,4 @@
-export const MAX_PENDING_ATTEMPTS = 10;
+export const MAX_PENDING_ATTEMPTS = 30;
 export const REFERRAL_BASE_URL = 'https://www.oculus.com/appreferrals';
 export const PLATFORM_BASE_URL = 'https://www.oculus.com/experiences';
 export const BROWSER_USER_AGENT =
@@ -22,4 +22,4 @@ export const HEADERS = {
 
 export const DEFAULT_CRAWLER: 'axios' | 'puppeteer' = 'axios';
 export const INVALID_LINK_TEXT = '<title>Error</title>';
-export const MINUTES_CRON = 15;
+export const MINUTES_CRON = 30;

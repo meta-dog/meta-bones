@@ -34,19 +34,19 @@ export class AppController {
     if (process.env?.LOCAL === 'true') {
       const { name } = this.moveQueue;
       Logger.log(
-        `🤖🚿 Getting job ${name} ready to run every ${MINUTES_CRON}m`,
+        `🤖🚿 Getting job ${name} ready to run at the ${MINUTES_CRON} minute`,
       );
       const job = new CronJob({
-        cronTime: `0 */${MINUTES_CRON} * * * *`,
+        cronTime: `0 ${MINUTES_CRON} * * * *`,
         onTick: () => {
           Logger.log(
-            `🤖⚒️ Starting job ${name}; running every ${MINUTES_CRON}m!`,
+            `🤖⚒️ Starting job ${name}; running at the ${MINUTES_CRON} minute!`,
           );
           this.moveQueue();
         },
         onComplete: () =>
           Logger.log(
-            `🤖🏆 Finished job ${name}; running every ${MINUTES_CRON}m!`,
+            `🤖🏆 Finished job ${name}; running at the ${MINUTES_CRON} minute!`,
           ),
         runOnInit: true,
       });

@@ -34,21 +34,21 @@ export class RegionController {
     if (process.env?.LOCAL === 'true') {
       const { name } = this.moveRegionQueue;
       Logger.log(
-        `🤖🚿 Device Referral: Getting job ${name} ready to run every ${MINUTES_CRON}m`,
+        `🤖🚿 Device Referral: Getting job ${name} ready to run at the ${MINUTES_CRON} minute`,
       );
       const job = new CronJob({
-        cronTime: `0 */${MINUTES_CRON} * * * *`,
+        cronTime: `0 ${MINUTES_CRON} * * * *`,
         onTick: () => {
           Logger.log(
-            `🤖⚒️ Device Referral: Starting job ${name}; running every ${MINUTES_CRON}m!`,
+            `🤖⚒️ Device Referral: Starting job ${name}; running at the ${MINUTES_CRON} minute!`,
           );
           this.moveRegionQueue();
         },
         onComplete: () =>
           Logger.log(
-            `🤖🏆 Device Referral: Finished job ${name}; running every ${MINUTES_CRON}m!`,
+            `🤖🏆 Device Referral: Finished job ${name}; running at the ${MINUTES_CRON} minute!`,
           ),
-        runOnInit: true,
+        runOnInit: false,
       });
       this.schedulerRegistry.addCronJob(name, job);
       job.start();

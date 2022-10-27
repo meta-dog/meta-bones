@@ -110,6 +110,8 @@ export class AppService {
   private async getContentFromPupetteer(url: string, baseUrl: string) {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
+    page.setDefaultNavigationTimeout(90000);
+    page.setDefaultTimeout(90000);
     await page.setCacheEnabled(false);
     await page.setUserAgent(BROWSER_USER_AGENT);
     await page.goto(baseUrl + url, { waitUntil: 'networkidle0' });
@@ -187,14 +189,30 @@ export class AppService {
     await page.keyboard.press('Enter', { delay: 20 });
 
     Logger.log('🖱️  Clicking Log In');
-    await this.repeatKeyPress(4, page, 'Tab');
-    await page.keyboard.press('Enter', { delay: 20 });
+    const loginContent = await page.content();
+    if (loginContent.includes('aria-label="Log in with email address"')) {
+      Logger.log('📨 Go to log in via email');
+      await this.repeatKeyPress(4, page, 'Tab');
+      await page.keyboard.press('Enter', { delay: 50 });
 
-    Logger.log('👤 Entering username');
-    await page.keyboard.type(username, { delay: 50 });
-    await page.keyboard.press('Tab', { delay: 20 });
-    Logger.log('🔑 Entering password');
-    await page.keyboard.type(password, { delay: 70 });
+      Logger.log('👤 Entering username');
+      await page.keyboard.type(username, { delay: 100 });
+      await page.keyboard.press('Tab', { delay: 100 });
+      await page.keyboard.press('Tab', { delay: 100 });
+      Logger.log('🔑 Entering password');
+      await page.keyboard.type(password, { delay: 125 });
+    } else {
+      Logger.log('📨 Direct login - tab to email');
+      await page.keyboard.press('Tab', { delay: 100 });
+      Logger.log('👤 Entering username');
+      await page.keyboard.type(username, { delay: 100 });
+      await page.keyboard.press('Tab', { delay: 100 });
+      await page.keyboard.press('Enter', { delay: 50 });
+      await this.repeatKeyPress(4, page, 'Tab');
+      Logger.log('🔑 Entering password');
+      await page.keyboard.type(password, { delay: 125 });
+      await page.keyboard.press('Enter', { delay: 50 });
+    }
     Logger.log('🙏 Submit login info');
     await page.keyboard.press('Enter');
     Logger.log('⏳ Wait for navigation');
@@ -218,6 +236,8 @@ export class AppService {
         '--disable-renderer-backgrounding',
       ],
       waitForInitialPage: true,
+      timeout: 90000,
+      headless: true,
     });
   }
 
@@ -232,6 +252,8 @@ export class AppService {
       }
 
       const [page] = await this.browser.pages();
+      page.setDefaultNavigationTimeout(90000);
+      page.setDefaultTimeout(90000);
       await page.setCacheEnabled(false);
       await page.setUserAgent(BROWSER_USER_AGENT);
       Logger.log('⏳ Wait for navigation');
@@ -304,6 +326,19 @@ export class AppService {
     const appInfo = await this.getAppInfoFrom(advocate_id, app_id);
     if (appInfo === false) throw new NotFoundException();
     const { name, has_quest, has_rift } = appInfo;
+
+    if (!has_quest && !has_rift) {
+      Logger.log(
+        `🚮 Discarding App ${app_id} with Advocate ${advocate_id} as it is not for Rift or Quest: Blacklisted`,
+      );
+      await this.blacklistItemModel.findOneAndUpdate(
+        { app_id, advocate_id },
+        { app_id, advocate_id },
+        { upsert: true },
+      );
+      await this.pendingItemModel.deleteOne({ app_id, advocate_id });
+      throw new NotFoundException();
+    }
 
     const app = await this.appModel.findOne({ app_id });
     if (app === null) {

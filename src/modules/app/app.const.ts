@@ -20,6 +20,6 @@ export const HEADERS = {
   dnt: '1',
 };
 
-export const DEFAULT_CRAWLER: 'axios' | 'puppeteer' = 'axios';
+export const DEFAULT_CRAWLER: 'axios' | 'puppeteer' = 'puppeteer';
 export const INVALID_LINK_TEXT = '<title>Error</title>';
 export const MINUTES_CRON = 30;

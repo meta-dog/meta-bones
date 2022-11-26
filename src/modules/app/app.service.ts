@@ -107,32 +107,24 @@ export class AppService {
     );
   }
 
-  private async getContentFromPupetteer(url: string, baseUrl: string) {
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
+  private async getContentAndUrl(url: string, baseUrl: string) {
+    if (this.browser === null) {
+      await this.initializeBrowser();
+    }
+
+    if (this.browser === null) {
+      throw new Error('🚨 Unable to initialise browser');
+    }
+
+    const [page] = await this.browser.pages();
     page.setDefaultNavigationTimeout(90000);
     page.setDefaultTimeout(90000);
     await page.setCacheEnabled(false);
     await page.setUserAgent(BROWSER_USER_AGENT);
     await page.goto(baseUrl + url, { waitUntil: 'networkidle0' });
+    const nextUrl = page.url();
     const content = await page.content();
-    return content;
-  }
-
-  private async getContentFromAxios(url: string, baseUrl: string) {
-    const request = await axios.get(url, {
-      baseURL: baseUrl,
-      headers: HEADERS,
-    });
-    const { data } = request;
-    return data;
-  }
-
-  private async getContentFrom(url: string, baseUrl: string) {
-    if (DEFAULT_CRAWLER === 'axios') {
-      return this.getContentFromAxios(url, baseUrl);
-    }
-    return this.getContentFromPupetteer(url, baseUrl);
+    return { content, nextUrl };
   }
 
   private async getAvailableIn(platform: Platform, app_id: string) {
@@ -141,8 +133,17 @@ export class AppService {
       `🐕 Fetching url ${url} to check platform ${platform} for app ${app_id}`,
     );
     try {
-      const data = await this.getContentFrom(url, PLATFORM_BASE_URL);
-      return (data as string).includes(`"${PLATFORM_BASE_URL}${url}"`);
+      const { content, nextUrl } = await this.getContentAndUrl(
+        url,
+        PLATFORM_BASE_URL,
+      );
+      const includesURL = nextUrl.includes(`${PLATFORM_BASE_URL}${url}`);
+      Logger.log(`🔍 ${PLATFORM_BASE_URL}${url} url valid: ${includesURL}`);
+      const invalidId = content.includes(
+        '<title id="pageTitle">OK | Oculus</title>',
+      );
+      Logger.log(`🔍 ${PLATFORM_BASE_URL}${url} id valid: ${!invalidId}`);
+      return includesURL && !invalidId;
     } catch (exception) {
       Logger.log(
         `🐕‍🦺 Unable to fetch url ${url} to check platform ${platform} for app ${app_id}`,
@@ -187,34 +188,50 @@ export class AppService {
     Logger.log('🍪 Dismissing second cookie alert');
     await this.repeatKeyPress(2, page, 'Tab');
     await page.keyboard.press('Enter', { delay: 20 });
+    Logger.log('⏳ Wait for navigation');
+    await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
-    Logger.log('🖱️  Clicking Log In');
     const loginContent = await page.content();
     if (loginContent.includes('aria-label="Log in with email address"')) {
+      Logger.log('⏳ Wait for the form to be stable');
+      await this.timeout(2 * 1000);
+
       Logger.log('📨 Go to log in via email');
       await this.repeatKeyPress(4, page, 'Tab');
       await page.keyboard.press('Enter', { delay: 50 });
 
       Logger.log('👤 Entering username');
-      await page.keyboard.type(username, { delay: 100 });
+      await page.keyboard.type(username, { delay: 85 });
+      Logger.log('🧭 Navigate to password');
       await page.keyboard.press('Tab', { delay: 100 });
       await page.keyboard.press('Tab', { delay: 100 });
+
       Logger.log('🔑 Entering password');
       await page.keyboard.type(password, { delay: 125 });
+      Logger.log('🙏 Submit login info');
+      await page.keyboard.press('Enter');
     } else {
       Logger.log('📨 Direct login - tab to email');
       await page.keyboard.press('Tab', { delay: 100 });
+
       Logger.log('👤 Entering username');
       await page.keyboard.type(username, { delay: 100 });
+
+      Logger.log('🧭 Navigate to password');
       await page.keyboard.press('Tab', { delay: 100 });
       await page.keyboard.press('Enter', { delay: 50 });
+
+      Logger.log('⏳ Wait for the form to be stable');
+      await this.timeout(2 * 1000);
       await this.repeatKeyPress(4, page, 'Tab');
+
       Logger.log('🔑 Entering password');
       await page.keyboard.type(password, { delay: 125 });
-      await page.keyboard.press('Enter', { delay: 50 });
+
+      Logger.log('🙏 Submit login info');
+      await this.repeatKeyPress(2, page, 'Tab');
+      await page.keyboard.press('Enter');
     }
-    Logger.log('🙏 Submit login info');
-    await page.keyboard.press('Enter');
     Logger.log('⏳ Wait for navigation');
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
   }
@@ -237,7 +254,7 @@ export class AppService {
       ],
       waitForInitialPage: true,
       timeout: 90000,
-      headless: true,
+      headless: false,
     });
   }
 
@@ -280,7 +297,11 @@ export class AppService {
     }
   }
 
-  private async getAppInfoFrom(advocate_id: string, app_id: string) {
+  private async getAppInfoFrom(
+    advocate_id: string,
+    app_id: string,
+    skipPlatform = false,
+  ) {
     const url = `/${advocate_id}/${app_id}`;
     Logger.log(`🐕 Fetching url ${url}`);
     try {
@@ -307,8 +328,11 @@ export class AppService {
       const [name] = match;
       const decodedName = decode(name);
       Logger.log(`🔍 Found App with name: ${decodedName}`);
-      const has_quest = await this.getAvailableIn('quest', app_id);
-      const has_rift = await this.getAvailableIn('rift', app_id);
+      let has_quest, has_rift;
+      if (!skipPlatform) {
+        has_quest = await this.getAvailableIn('quest', app_id);
+        has_rift = await this.getAvailableIn('rift', app_id);
+      }
       return { name: decode(decodedName), has_quest, has_rift };
     } catch (error) {
       Logger.error(
@@ -319,15 +343,45 @@ export class AppService {
     }
   }
 
+  private async removeAdvocateIdFromApp(
+    advocate_id: App['advocates'][number],
+    app_id: App['app_id'],
+  ) {
+    const app = await this.appModel.findOne({ app_id }).populate('advocates');
+    if (app !== null) {
+      const { advocates, name } = app;
+      const newAdvocates = advocates.filter(
+        (advocateId) => advocateId !== advocate_id,
+      );
+      if (advocates.length !== newAdvocates.length) {
+        Logger.log(
+          `🚮 Discarding old Advocate ${advocate_id} from App ${name} (${app_id}) as it is no longer valid`,
+        );
+        await this.appModel.findOneAndUpdate(
+          { app_id },
+          { advocates: newAdvocates },
+        );
+      }
+    }
+  }
+
   private async createReferral(
     advocate_id: App['advocates'][number],
     app_id: App['app_id'],
+    skipPlatform = false,
   ): Promise<void> {
-    const appInfo = await this.getAppInfoFrom(advocate_id, app_id);
-    if (appInfo === false) throw new NotFoundException();
+    const appInfo = await this.getAppInfoFrom(
+      advocate_id,
+      app_id,
+      skipPlatform,
+    );
+    if (appInfo === false) {
+      await this.removeAdvocateIdFromApp(advocate_id, app_id);
+      throw new NotFoundException();
+    }
     const { name, has_quest, has_rift } = appInfo;
 
-    if (!has_quest && !has_rift) {
+    if (!skipPlatform && !has_quest && !has_rift) {
       Logger.log(
         `🚮 Discarding App ${app_id} with Advocate ${advocate_id} as it is not for Rift or Quest: Blacklisted`,
       );
@@ -337,6 +391,7 @@ export class AppService {
         { upsert: true },
       );
       await this.pendingItemModel.deleteOne({ app_id, advocate_id });
+      await this.removeAdvocateIdFromApp(advocate_id, app_id);
       throw new NotFoundException();
     }
 
@@ -364,9 +419,12 @@ export class AppService {
     await this.blacklistItemModel.deleteOne({ app_id, advocate_id });
   }
 
-  private async movePendingItem({ advocate_id, app_id }: PendingItem) {
+  private async movePendingItem(
+    { advocate_id, app_id }: PendingItem,
+    skipPlatform = false,
+  ) {
     try {
-      await this.createReferral(advocate_id, app_id);
+      await this.createReferral(advocate_id, app_id, skipPlatform);
       Logger.log(
         `🎉 Successfully created the referral ${app_id}/${advocate_id}`,
       );
@@ -381,14 +439,14 @@ export class AppService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async moveItems(items: PendingItem[], index: number) {
+  async moveItems(items: PendingItem[], index: number, skipPlatform = false) {
     if (index >= items.length) return;
     const currentItem = items[index];
     const nextWaitMs = 300 * (1 + Math.random());
     Logger.log(`🫡  Attempting to create ${index + 1}/${items.length}`);
-    await this.movePendingItem(currentItem);
+    await this.movePendingItem(currentItem, skipPlatform);
     await this.timeout(nextWaitMs);
-    await this.moveItems(items, index + 1);
+    await this.moveItems(items, index + 1, skipPlatform);
   }
 
   async moveQueue() {
@@ -455,14 +513,20 @@ export class AppService {
     );
   }
 
-  private async movePlatformItem({ app_id }: App) {
+  private async movePlatformItem({ app_id, name }: App) {
     try {
       const has_quest = await this.getAvailableIn('quest', app_id);
       const has_rift = await this.getAvailableIn('rift', app_id);
       Logger.log(
-        `🕶️ Updating app ${app_id} with Quest: ${has_quest} & Rift: ${has_rift}`,
+        `🕶️ Updating app ${name} (${app_id}) with Quest: ${has_quest} & Rift: ${has_rift}`,
       );
       await this.appModel.findOneAndUpdate({ app_id }, { has_quest, has_rift });
+      if (!has_quest && !has_rift) {
+        Logger.log(
+          `🔥 Deleting ${name} (${app_id}) as it has neither platform`,
+        );
+        await this.appModel.deleteOne({ app_id });
+      }
     } catch (error) {
       Logger.error(`🙈 Error getting platform info for ${app_id}: ${error}`);
     }
@@ -473,7 +537,7 @@ export class AppService {
     const currentItem = items[index];
     const nextWaitMs = 300 * (1 + Math.random());
     Logger.log(
-      `👓 Attempting to check platform for element ${index + 1}/${
+      `👓 Attempting to check platform for element  ${index + 1}/${
         items.length
       }`,
     );
@@ -495,5 +559,47 @@ export class AppService {
     Logger.log(
       `😪 All platform info queue items handled, going back to sleep!`,
     );
+  }
+
+  async restartBlacklistQueue() {
+    const blacklistItems = await this.blacklistItemModel.find();
+    const pendingItems: PendingItem[] = blacklistItems.map((blacklistItem) => ({
+      app_id: blacklistItem.app_id,
+      advocate_id: blacklistItem.advocate_id,
+      attempts: 0,
+    }));
+    console.log(pendingItems);
+    Logger.log('✝️ Resurrecting blacklisted items to pending');
+    await this.pendingItemModel.create(pendingItems, {});
+    const blacklistIds = blacklistItems.map(({ _id }) => _id);
+    Logger.log('💥 Destroying resurrected blacklisted items');
+    await this.blacklistItemModel.deleteMany({ _id: blacklistIds });
+  }
+
+  async reviewApps() {
+    const apps = await this.appModel.find({
+      $or: [
+        { has_quest: true, has_rift: true },
+        { has_quest: undefined, has_rift: undefined },
+        { has_quest: false, has_rift: false },
+      ],
+    });
+    Logger.log('👓 Reviewing suspicious apps');
+    await this.movePlatformItems(apps, 0);
+    await this.browser?.close();
+    this.browser = null;
+    Logger.log('🏁 Finished reviewing all apps');
+  }
+
+  async reviewOldReferrals() {
+    const apps = await this.appModel.find().populate('advocates');
+    const pendingItems: PendingItem[] = apps.flatMap(({ app_id, advocates }) =>
+      advocates.map((advocate_id) => ({ app_id, advocate_id, attempts: 0 })),
+    );
+    Logger.log('👓 Reviewing old app referrals, skipping platform');
+    await this.moveItems(pendingItems, 0, true);
+    await this.browser?.close();
+    this.browser = null;
+    Logger.log('🏁 Finished reviewing old app referrals');
   }
 }

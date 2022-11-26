@@ -190,34 +190,52 @@ export class RegionService {
     await this.repeatKeyPress(2, page, 'Tab');
     await page.keyboard.press('Enter', { delay: 20 });
 
-    Logger.log('🖱️  Device Referral: Clicking Log In');
+    Logger.log('⏳ Wait for navigation');
+    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+
     const loginContent = await page.content();
     if (loginContent.includes('aria-label="Log in with email address"')) {
+      Logger.log('⏳ Wait for the form to be stable');
+      await this.timeout(2 * 1000);
+
       Logger.log('📨 Go to log in via email');
       await this.repeatKeyPress(4, page, 'Tab');
       await page.keyboard.press('Enter', { delay: 50 });
 
-      Logger.log('👤 Device Referral: Entering username');
-      await page.keyboard.type(username, { delay: 100 });
+      Logger.log('👤 Entering username');
+      await page.keyboard.type(username, { delay: 85 });
+      Logger.log('🧭 Navigate to password');
       await page.keyboard.press('Tab', { delay: 100 });
       await page.keyboard.press('Tab', { delay: 100 });
-      Logger.log('🔑 Device Referral: Entering password');
+
+      Logger.log('🔑 Entering password');
       await page.keyboard.type(password, { delay: 125 });
+      Logger.log('🙏 Submit login info');
+      await page.keyboard.press('Enter');
     } else {
-      Logger.log('📨 Device Referral: Direct login - tab to email');
+      Logger.log('📨 Direct login - tab to email');
       await page.keyboard.press('Tab', { delay: 100 });
-      Logger.log('👤 Device Referral: Entering username');
+
+      Logger.log('👤 Entering username');
       await page.keyboard.type(username, { delay: 100 });
+
+      Logger.log('🧭 Navigate to password');
       await page.keyboard.press('Tab', { delay: 100 });
       await page.keyboard.press('Enter', { delay: 50 });
+
+      Logger.log('⏳ Wait for the form to be stable');
+      await this.timeout(2 * 1000);
       await this.repeatKeyPress(4, page, 'Tab');
-      Logger.log('🔑 Device Referral: Entering password');
+
+      Logger.log('🔑 Entering password');
       await page.keyboard.type(password, { delay: 125 });
-      await page.keyboard.press('Enter', { delay: 50 });
+
+      Logger.log('🙏 Submit login info');
+      await this.repeatKeyPress(2, page, 'Tab');
+      await page.keyboard.press('Enter');
     }
-    Logger.log('🙏 Device Referral: Submit login info');
-    await page.keyboard.press('Enter');
-    Logger.log('⏳ Device Referral: Wait for navigation');
+
+    Logger.log('⏳ Wait for navigation');
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
   }
 
@@ -238,7 +256,7 @@ export class RegionService {
         '--disable-renderer-backgrounding',
       ],
       waitForInitialPage: true,
-      headless: true,
+      headless: false,
     });
   }
 
@@ -322,6 +340,18 @@ export class RegionService {
     region: Region['region'],
   ): Promise<void> {
     if (await this.isDuplicatedAdvocate(advocate_id)) {
+      Logger.log(
+        `🚨 Device Referral: Adding to blacklist due to duplicate ${advocate_id}`,
+      );
+      await this.deviceReferralBlacklistItemModel.findOneAndUpdate(
+        { region, advocate_id },
+        { region, advocate_id },
+        { upsert: true },
+      );
+      await this.deviceReferralPendingItemModel.findOneAndRemove({
+        region,
+        advocate_id,
+      });
       throw new ConflictException();
     }
 

@@ -48,7 +48,7 @@ export class AppController {
           Logger.log(
             `🤖🏆 Finished job ${name}; running at the ${MINUTES_CRON} minute!`,
           ),
-        runOnInit: true,
+        runOnInit: false,
       });
       this.schedulerRegistry.addCronJob(name, job);
       job.start();
@@ -130,5 +130,35 @@ export class AppController {
       throw new NotFoundException();
     }
     await this.appService.movePlatformInfoQueue();
+  }
+
+  @Get('app/queue/restart-blacklist')
+  @ApiExcludeEndpoint(process?.env?.LOCAL !== 'true')
+  async restartBlacklistQueue(): Promise<void> {
+    if (process?.env?.LOCAL !== 'true') {
+      Logger.error('👿 Attempt to use local endpoint restartBlacklistQueue');
+      throw new NotFoundException();
+    }
+    await this.appService.restartBlacklistQueue();
+  }
+
+  @Get('app/queue/review-apps')
+  @ApiExcludeEndpoint(process?.env?.LOCAL !== 'true')
+  async reviewApps(): Promise<void> {
+    if (process?.env?.LOCAL !== 'true') {
+      Logger.error('👿 Attempt to use local endpoint reviewApps');
+      throw new NotFoundException();
+    }
+    await this.appService.reviewApps();
+  }
+
+  @Get('app/queue/review-old-referrals')
+  @ApiExcludeEndpoint(process?.env?.LOCAL !== 'true')
+  async reviewOldReferrals(): Promise<void> {
+    if (process?.env?.LOCAL !== 'true') {
+      Logger.error('👿 Attempt to use local endpoint reviewOldReferrals');
+      throw new NotFoundException();
+    }
+    await this.appService.reviewOldReferrals();
   }
 }

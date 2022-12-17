@@ -23,7 +23,7 @@ export const HEADERS = {
     'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
   'sec-ch-ua-platform': 'Windows',
   'sec-ch-ua':
-    'Google Chrome";v="105", "Not)A;Brand";v="8", "Chromium";v="105"',
+    'Google Chrome";v="108", "Not)A;Brand";v="8", "Chromium";v="108"',
   'sec-ch-ua-mobile': '?0',
   'sec-fetch-dest': 'Document',
   'sec-fetch-mode': 'navigate',

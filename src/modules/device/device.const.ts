@@ -1,4 +1,15 @@
-export const REGIONS = ['ES', 'UK', 'US', 'NL', 'BE', 'CA', 'AU', 'NZ', 'IT'];
+export const REGIONS = [
+  'ES',
+  'UK',
+  'US',
+  'NL',
+  'BE',
+  'CA',
+  'AU',
+  'NZ',
+  'IT',
+  'AT',
+];
 export const MAX_PENDING_ATTEMPTS = 30;
 export const DEVICE_REFERRAL_BASE_URL = 'https://www.oculus.com/referrals/link';
 export const MINUTES_CRON = 0;

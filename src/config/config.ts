@@ -9,6 +9,7 @@ interface Config {
     username?: string;
     password?: string;
   };
+  local: string;
 }
 
 export const config = (): Config => ({
@@ -22,4 +23,5 @@ export const config = (): Config => ({
     username: process.env.META_LOGIN,
     password: process.env.META_PASSWORD,
   },
+  local: process.env.LOCAL || 'false',
 });

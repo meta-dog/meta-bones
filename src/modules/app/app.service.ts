@@ -8,14 +8,11 @@ import {
 import puppeteer from 'puppeteer';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import axios from 'axios';
 import { decode } from 'html-entities';
 import { Model } from 'mongoose';
 
 import {
   BROWSER_USER_AGENT,
-  DEFAULT_CRAWLER,
-  HEADERS,
   INVALID_LINK_TEXT,
   MAX_PENDING_ATTEMPTS,
   PLATFORM_BASE_URL,
@@ -328,6 +325,14 @@ export class AppService {
       const [name] = match;
       const decodedName = decode(name);
       Logger.log(`🔍 Found App with name: ${decodedName}`);
+      const app = await this.appModel.findOne({ app_id });
+      if (app !== null) {
+        const { has_quest, has_rift } = app;
+        Logger.log(
+          `🦘 Skipping platform check as the App ${decodedName} already existed`,
+        );
+        return { name: decode(decodedName), has_quest, has_rift };
+      }
       let has_quest, has_rift;
       if (!skipPlatform) {
         has_quest = await this.getAvailableIn('quest', app_id);
@@ -568,12 +573,12 @@ export class AppService {
       advocate_id: blacklistItem.advocate_id,
       attempts: 0,
     }));
-    console.log(pendingItems);
-    Logger.log('✝️ Resurrecting blacklisted items to pending');
+    Logger.log('✝️ Resurrecting blacklisted apps to pending');
     await this.pendingItemModel.create(pendingItems, {});
     const blacklistIds = blacklistItems.map(({ _id }) => _id);
-    Logger.log('💥 Destroying resurrected blacklisted items');
+    Logger.log('💥 Destroying resurrected blacklisted apps');
     await this.blacklistItemModel.deleteMany({ _id: blacklistIds });
+    Logger.log('🏁 Finished restarting blacklisted apps');
   }
 
   async reviewApps() {

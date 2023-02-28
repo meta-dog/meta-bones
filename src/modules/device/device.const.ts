@@ -10,6 +10,7 @@ export const REGIONS = [
   'IT',
   'AT',
   'KR',
+  'PL',
 ];
 export const MAX_PENDING_ATTEMPTS = 30;
 export const DEVICE_REFERRAL_BASE_URL = 'https://www.oculus.com/referrals/link';

@@ -103,7 +103,7 @@ export class RegionController {
     await this.deviceService.addRegionReferralToQueue(advocate_id, region);
   }
 
-  @Get('app/queue/move')
+  @Get('region/queue/move')
   @ApiExcludeEndpoint(process?.env?.LOCAL !== 'true')
   async moveRegionQueue(): Promise<void> {
     if (process?.env?.LOCAL !== 'true') {
@@ -120,5 +120,18 @@ export class RegionController {
       throw new NotFoundException();
     }
     await this.deviceService.moveRegionQueue();
+  }
+
+  @Get('region/queue/restart-blacklist')
+  @ApiExcludeEndpoint(process?.env?.LOCAL !== 'true')
+  async restartRegionBlacklistQueue(): Promise<void> {
+    if (process?.env?.LOCAL !== 'true') {
+      Logger.error(
+        '👿 Attempt to use local endpoint restartRegionBlacklistQueue',
+      );
+      throw new NotFoundException();
+    }
+
+    await this.deviceService.restartRegionBlacklistQueue();
   }
 }

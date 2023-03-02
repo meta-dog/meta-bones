@@ -450,4 +450,24 @@ export class RegionService {
     );
     this.isQueueRunning = false;
   }
+
+  async restartRegionBlacklistQueue() {
+    const blacklistRegionItems =
+      await this.deviceReferralBlacklistItemModel.find();
+    const pendingRegionItems: RegionPendingItem[] = blacklistRegionItems.map(
+      (blacklistItem) => ({
+        region: blacklistItem.region,
+        advocate_id: blacklistItem.advocate_id,
+        attempts: 0,
+      }),
+    );
+    Logger.log('✝️ Device Referral: Resurrecting blacklisted apps to pending');
+    await this.deviceReferralPendingItemModel.create(pendingRegionItems, {});
+    const blacklistIds = blacklistRegionItems.map(({ _id }) => _id);
+    Logger.log('💥 Device Referral: Destroying resurrected blacklisted apps');
+    await this.deviceReferralBlacklistItemModel.deleteMany({
+      _id: blacklistIds,
+    });
+    Logger.log('🏁 Device Referral: Finished restarting blacklisted apps');
+  }
 }

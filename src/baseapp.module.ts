@@ -5,6 +5,7 @@ import { AppModule } from './modules/app/app.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { RegionModule } from './modules/device/device.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { RegionModule } from './modules/device/device.module';
     RegionModule,
     AppModule,
     ScheduleModule.forRoot(),
+    HealthModule,
   ],
   controllers: [],
   providers: [],

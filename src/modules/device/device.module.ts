@@ -12,6 +12,8 @@ import {
   RegionBlacklistItem,
   RegionBlacklistItemSchema,
 } from '@schemas/region-blacklist-item.schema';
+import { CacheModule } from '@nestjs/cache-manager';
+import { CACHE_TTL_MS } from './device.const';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import {
       { name: RegionBlacklistItem.name, schema: RegionBlacklistItemSchema },
       { name: RegionPendingItem.name, schema: RegionPendingItemSchema },
     ]),
+    CacheModule.register({ ttl: CACHE_TTL_MS }),
   ],
   controllers: [RegionController],
   providers: [RegionService],

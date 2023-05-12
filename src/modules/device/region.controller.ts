@@ -1,3 +1,4 @@
+import { CacheInterceptor } from '@nestjs/cache-manager';
 import {
   BadRequestException,
   Controller,
@@ -6,6 +7,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  UseInterceptors,
 } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import {
@@ -56,8 +58,10 @@ export class RegionController {
   }
 
   @Get('regions')
+  @UseInterceptors(CacheInterceptor)
   @ApiOkResponse({ type: GetRegionResponse, isArray: true })
-  async getAllApps(): Promise<RegionInterface[]> {
+  async getAllRegions(): Promise<RegionInterface[]> {
+    Logger.log(`🔍 Returning all regions`);
     const results = await this.deviceService.findAll();
     return results.map(({ region }) => ({ region }));
   }

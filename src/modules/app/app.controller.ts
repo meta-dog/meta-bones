@@ -1,3 +1,4 @@
+import { CacheInterceptor } from '@nestjs/cache-manager';
 import {
   BadRequestException,
   Controller,
@@ -6,6 +7,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  UseInterceptors,
 } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import {
@@ -55,9 +57,11 @@ export class AppController {
     }
   }
 
+  @UseInterceptors(CacheInterceptor)
   @Get('apps')
   @ApiOkResponse({ type: GetAppResponse, isArray: true })
   async getAllApps(): Promise<AppInterface[]> {
+    Logger.log(`🔍 Returning all apps`);
     const results = await this.appService.findAll();
     return results.map(({ app_id, name, has_quest, has_rift }) => ({
       app_id,

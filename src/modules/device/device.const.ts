@@ -35,3 +35,4 @@ export const HEADERS = {
   'upgrade-insecure-requests': '1',
   dnt: '1',
 };
+export const CACHE_TTL_MS = 300 * 60 * 1000;

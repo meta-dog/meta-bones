@@ -12,6 +12,8 @@ import {
   BlacklistItem,
   BlacklistItemSchema,
 } from '@schemas/app-blacklist-item.schema';
+import { CacheModule } from '@nestjs/cache-manager';
+import { CACHE_TTL_MS } from './app.const';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import {
       { name: BlacklistItem.name, schema: BlacklistItemSchema },
       { name: PendingItem.name, schema: PendingItemSchema },
     ]),
+    CacheModule.register({ ttl: CACHE_TTL_MS }),
   ],
   controllers: [AppController],
   providers: [AppService],

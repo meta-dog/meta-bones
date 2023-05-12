@@ -23,3 +23,4 @@ export const HEADERS = {
 export const DEFAULT_CRAWLER: 'axios' | 'puppeteer' = 'puppeteer';
 export const INVALID_LINK_TEXT = '<title>Error</title>';
 export const MINUTES_CRON = 30;
+export const CACHE_TTL_MS = 60 * 1000;

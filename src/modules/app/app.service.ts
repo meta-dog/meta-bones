@@ -45,7 +45,9 @@ export class AppService {
   isQueueRunning: boolean;
 
   async findAll(): Promise<App[]> {
-    return await this.appModel.find().exec();
+    return await this.appModel
+      .find({ advocates: { $exists: true, $not: { $size: 0 } } })
+      .exec();
   }
 
   async getReferralForAppByAppId(

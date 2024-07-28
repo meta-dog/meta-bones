@@ -21,7 +21,7 @@ export const REGIONS = [
   'SE',
 ];
 export const MAX_PENDING_ATTEMPTS = 30;
-export const DEVICE_REFERRAL_BASE_URL = 'https://www.oculus.com/referrals/link';
+export const DEVICE_REFERRAL_BASE_URL = 'https://www.meta.com/referrals/link';
 export const MINUTES_CRON = 0;
 export const INVALID_LINK_TEXT = '<title>Error</title>';
 export const BROWSER_USER_AGENT =

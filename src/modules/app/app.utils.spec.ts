@@ -44,7 +44,7 @@ const validateAppIdData: ValidateAppIdData[] = [
   },
   {
     input:
-      'https://www.oculus.com/appreferrals/example.user/1241241241241241/?utm_source=3',
+      'https://www.meta.com/appreferrals/example.user/1241241241241241/?utm_source=3',
     output: false,
   },
   {

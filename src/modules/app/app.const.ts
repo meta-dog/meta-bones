@@ -1,6 +1,6 @@
 export const MAX_PENDING_ATTEMPTS = 30;
-export const REFERRAL_BASE_URL = 'https://www.oculus.com/appreferrals';
-export const PLATFORM_BASE_URL = 'https://www.oculus.com/experiences';
+export const REFERRAL_BASE_URL = 'https://www.meta.com/appreferrals';
+export const PLATFORM_BASE_URL = 'https://www.meta.com/experiences';
 export const BROWSER_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36';
 export const HEADERS = {
